@@ -14,6 +14,16 @@ namespace Compute.Tests
 {
     public class VMPatchOperationsTests : VMTestBase
     {
+        private const string RgName = "PatchStatusRg";
+        private const string WindowsVmName = "testVmWindows";
+        private const string LinuxVmName = "testLinuxVM";
+
+        //How to re-record this test:
+        // 1. Manually create Resource group and VM find sub from ComputeManagementClient m_CrpClient.SubscriptionId from VMTestBase,
+        // update the constants for RgName and WindowsVmName
+        // 2. invoke CRP install patch api
+        // 3. Then run this test
+
         /// <summary>
         /// Covers following Operations:
         /// Create RG
@@ -23,52 +33,63 @@ namespace Compute.Tests
         /// Delete RG
         /// </summary>
         [Fact]
-        public void TestVMPatchOperations_AssessPatches()
+        public void TestVMPatchOperations_AssessPatches_OnWindows()
         {
             using (MockContext context = MockContext.Start(this.GetType()))
             {
                 EnsureClientsInitialized(context);
 
-                ImageReference imageRef = GetPlatformVMImage(useWindowsImage: true, sku: "2016-Datacenter");
+                VirtualMachineAssessPatchesResult assessPatchesResult = m_CrpClient.VirtualMachines.AssessPatches(RgName, WindowsVmName);
 
-                // Create resource group
-                string rg1Name = TestUtilities.GenerateName(TestPrefix) + 1;
-                string asName = TestUtilities.GenerateName("as");
-                string storageAccountName = TestUtilities.GenerateName(TestPrefix);
-                VirtualMachine inputVM1;
+                Assert.NotNull(assessPatchesResult);
+                Assert.Equal("Succeeded", assessPatchesResult.Status);
+                Assert.NotNull(assessPatchesResult.AssessmentActivityId);
+                Assert.NotNull(assessPatchesResult.RebootPending);
+                Assert.NotNull(assessPatchesResult.CriticalAndSecurityPatchCount);
+                Assert.NotNull(assessPatchesResult.OtherPatchCount);
+                Assert.NotNull(assessPatchesResult.StartDateTime);
+                Assert.NotNull(assessPatchesResult.AvailablePatches);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].PatchId);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].Name);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].KbId);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].Classifications);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].RebootBehavior);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].PublishedDate);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].ActivityId);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].LastModifiedDateTime);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].AssessmentState);
+                // ToDo: add this check after windows change for error object in merged
+                // Assert.NotNull(assessPatchesResult.Error);
+            }
+        }
 
-                bool passed = false;
-                try
-                {
-                    // Create Storage Account for this VM
-                    var storageAccountOutput = CreateStorageAccount(rg1Name, storageAccountName);
+        [Fact]
+        public void TestVMPatchOperations_AssessPatches_OnLinux()
+        {
+            using (MockContext context = MockContext.Start(this.GetType()))
+            {
+                EnsureClientsInitialized(context);
 
-                    VirtualMachine vm1 = CreateVM(
-                        rg1Name,
-                        asName,
-                        storageAccountOutput.Name,
-                        imageRef,
-                        out inputVM1,
-                        hasManagedDisks: true,
-                        vmSize: VirtualMachineSizeTypes.StandardDS3V2,
-                        createWithPublicIpAddress: true);
+                VirtualMachineAssessPatchesResult assessPatchesResult = m_CrpClient.VirtualMachines.AssessPatches(RgName, LinuxVmName);
 
-                    VirtualMachineAssessPatchesResult assessPatchesResult = m_CrpClient.VirtualMachines.AssessPatches(rg1Name, vm1.Name);
-
-                    Assert.NotNull(assessPatchesResult);
-                    Assert.Equal("Succeeded", assessPatchesResult.Status);
-                    Assert.NotNull(assessPatchesResult.StartDateTime);
-
-                    passed = true;
-                }
-                finally
-                {
-                    // Cleanup the created resources. But don't wait since it takes too long, and it's not the purpose
-                    // of the test to cover deletion. CSM does persistent retrying over all RG resources.
-                    var deleteRg1Response = m_ResourcesClient.ResourceGroups.BeginDeleteWithHttpMessagesAsync(rg1Name);
-                }
-
-                Assert.True(passed);
+                Assert.NotNull(assessPatchesResult);
+                Assert.Equal("Succeeded", assessPatchesResult.Status);
+                Assert.NotNull(assessPatchesResult.AssessmentActivityId);
+                Assert.NotNull(assessPatchesResult.RebootPending);
+                Assert.NotNull(assessPatchesResult.CriticalAndSecurityPatchCount);
+                Assert.NotNull(assessPatchesResult.OtherPatchCount);
+                Assert.NotNull(assessPatchesResult.StartDateTime);
+                Assert.NotNull(assessPatchesResult.AvailablePatches);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].PatchId);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].Name);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].Version);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].Classifications);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].RebootBehavior);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].PublishedDate);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].ActivityId);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].LastModifiedDateTime);
+                Assert.NotNull(assessPatchesResult.AvailablePatches[0].AssessmentState);
+                Assert.NotNull(assessPatchesResult.Error);
             }
         }
     }
